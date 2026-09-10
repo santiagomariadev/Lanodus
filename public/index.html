@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Share System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <main class="app-shell">
+      <section id="login-card" class="card login-card">
+        <h1>Local Share</h1>
+        <p class="muted">Sign in with a predefined account.</p>
+        <form id="login-form" class="form-stack">
+          <label>
+            Username
+            <input id="username" name="username" autocomplete="username" required />
+          </label>
+          <label>
+            Password
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+          <button type="submit">Login</button>
+        </form>
+      </section>
+
+      <section id="dashboard" class="card dashboard hidden">
+        <header class="topbar">
+          <div>
+            <h2>Share Console</h2>
+            <p class="muted">Signed in as <span id="current-user"></span></p>
+          </div>
+          <button id="logout-btn" class="ghost">Logout</button>
+        </header>
+
+        <nav class="tabs" role="tablist" aria-label="Share tabs">
+          <button class="tab active" data-tab="files" role="tab" aria-selected="true">Files</button>
+          <button class="tab" data-tab="text" role="tab" aria-selected="false">Text</button>
+        </nav>
+
+        <section id="tab-files" class="tab-panel">
+          <div id="dropzone" class="dropzone">
+            <p><strong>Drop file here</strong> or choose one manually.</p>
+            <input id="file-input" type="file" />
+          </div>
+          <div class="file-meta">
+            <span>Selected:</span> <strong id="selected-file">None</strong>
+          </div>
+          <button id="upload-file-btn">Upload File</button>
+        </section>
+
+        <section id="tab-text" class="tab-panel hidden">
+          <form id="text-form" class="text-upload-row">
+            <input id="text-input" maxlength="5000" placeholder="Write or paste text to upload" required />
+            <button type="submit">Upload Text</button>
+          </form>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Text</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="text-rows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
