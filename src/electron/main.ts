@@ -1,38 +1,35 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import * as path from "node:path";
 import * as os from "node:os";
-import { readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import bonjour from "bonjour";
+import {
+  addAllowedUser as addAllowedUserToStore,
+  isValidUsername as isValidUsernameString,
+  readAllowedUsers as readAllowedUsersFromStore,
+  removeAllowedUser as removeAllowedUserFromStore,
+} from "../utils/add-allowed-user";
 import { buildAdvertisedService, buildHostUrls } from "./network";
 
 const PORT = Number(process.env.PORT || 3000);
-const APP_ROOT = path.resolve(__dirname, "..", "..");
-const USERS_FILE = path.join(APP_ROOT, ".allowedusers");
+const APP_ROOT = app.isPackaged ? app.getAppPath() : path.resolve(__dirname, "..", "..");
+const DATA_ROOT = path.join(app.getPath("userData"), "local-share-system");
+const CHILD_CWD = app.isPackaged ? path.dirname(process.resourcesPath || app.getPath("home")) : APP_ROOT;
+const PUBLIC_DIR = app.isPackaged ? path.join(process.resourcesPath, "public") : path.join(APP_ROOT, "public");
+const SERVER_ENTRY = app.isPackaged
+  ? path.join(process.resourcesPath, "dist", "index.js")
+  : path.join(APP_ROOT, "src", "index.ts");
 
 let serverProcess: ReturnType<typeof spawn> | null = null;
 let serverReady = false;
 let hostAdvertiser: { stop: () => void } | null = null;
 
 function isValidUsername(username: string) {
-  return /^[a-zA-Z0-9._-]{3,32}$/.test(username);
+  return isValidUsernameString(username);
 }
 
 async function readAllowedUsersFromDisk(): Promise<string[]> {
-  try {
-    const file = await readFile(USERS_FILE, "utf8");
-    return file
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => line.split(":::")[0])
-      .filter((username): username is string => Boolean(username));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
-    }
-    throw error;
-  }
+  return readAllowedUsersFromStore(DATA_ROOT);
 }
 
 async function createAllowedUser(username: string, password: string): Promise<string[]> {
@@ -41,47 +38,17 @@ async function createAllowedUser(username: string, password: string): Promise<st
     throw new Error("Use 3-32 chars for the username and provide a password.");
   }
 
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn("bun", ["run", "add-user", "--", cleanUsername, password], {
-      cwd: APP_ROOT,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    let stderr = "";
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    child.on("error", reject);
-    child.on("exit", (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-      reject(new Error(stderr || `Failed to create user '${cleanUsername}'.`));
-    });
-  });
-
+  await addAllowedUserToStore(cleanUsername, password, DATA_ROOT);
   return readAllowedUsersFromDisk();
 }
 
-async function removeAllowedUser(username: string): Promise<string[]> {
+async function removeAllowedUserByName(username: string): Promise<string[]> {
   const cleanUsername = username.trim();
   if (!isValidUsername(cleanUsername)) {
     throw new Error("Invalid username.");
   }
 
-  const existing = await readAllowedUsersFromDisk();
-  const remaining = existing.filter((entry) => entry !== cleanUsername);
-
-  const file = await readFile(USERS_FILE, "utf8").catch(() => "");
-  const filtered = file
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !line.startsWith(`${cleanUsername}:::`));
-
-  await writeFile(USERS_FILE, `${filtered.join("\n")}${filtered.length ? "\n" : ""}`, "utf8");
-  return remaining;
+  return removeAllowedUserFromStore(cleanUsername, DATA_ROOT);
 }
 
 function getLocalAddresses(): string[] {
@@ -145,18 +112,27 @@ function startLocalShareServer(): Promise<void> {
     const env = {
       ...process.env,
       PORT: String(PORT),
+      LOCAL_SHARE_APP_ROOT: APP_ROOT,
+      LOCAL_SHARE_PUBLIC_DIR: PUBLIC_DIR,
+      LOCAL_SHARE_DATA_DIR: DATA_ROOT,
     };
 
-    serverProcess = spawn("bun", ["index.ts"], {
-      cwd: APP_ROOT,
+    const serverCommand = app.isPackaged ? "bun" : "bun";
+    const serverArgs = [SERVER_ENTRY];
+
+    serverProcess = spawn(serverCommand, serverArgs, {
+      cwd: CHILD_CWD,
       env,
       stdio: ["ignore", "pipe", "pipe"],
     });
 
     let settled = false;
+    let childOutput = "";
 
     const onData = (chunk: Buffer | string) => {
       const text = chunk.toString();
+      childOutput += text;
+      console.log("[local-share-server]", text.trim());
       if (!settled && text.includes("Local Share server listening")) {
         serverReady = true;
         settled = true;
@@ -185,7 +161,7 @@ function startLocalShareServer(): Promise<void> {
         }
 
         settled = true;
-        reject(new Error(`Local Share server exited with code ${code}.`));
+        reject(new Error(`Local Share server exited with code ${code}. Output: ${childOutput.trim() || "(no output)"}`));
       }
     });
 
@@ -313,7 +289,7 @@ app.whenReady().then(async () => {
   );
 
   ipcMain.handle("remove-allowed-user", async (_event, username: string) =>
-    removeAllowedUser(username),
+    removeAllowedUserByName(username),
   );
 
   ipcMain.handle("open-external-url", async (_event, url: string) => {

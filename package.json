@@ -1,10 +1,16 @@
 {
   "name": "local-share-system",
   "main": "dist/electron/main.js",
+  "version": "1.0.0",
+  "author": {
+    "name": "Santiago Maria",
+    "email": "santiagomariadev@gmail.com",
+    "url": "https://santiagomaria.dev"
+  },
   "private": true,
   "scripts": {
-    "dev": "bun --watch index.ts",
-    "start": "bun index.ts",
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
     "build": "bunx tsc -p tsconfig.electron.json",
     "electron": "bun run build && bunx electron dist/electron/main.js",
     "add-user": "bun scripts/add-allowed-user.ts",
@@ -28,6 +34,23 @@
     "directories": {
       "output": "release"
     },
+    "files": [
+      "dist/**/*",
+      "public/**/*",
+      "scripts/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      },
+      {
+        "from": "public",
+        "to": "public"
+      }
+    ],
     "linux": {
       "target": [
         "AppImage"

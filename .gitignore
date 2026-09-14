@@ -36,3 +36,6 @@ received/
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Electron
+release

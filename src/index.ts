@@ -1,8 +1,12 @@
 import { appendFile, mkdir, readdir, readFile, stat, unlink } from "node:fs/promises";
 import path from "node:path";
+import { verifyPassword } from "./utils/add-allowed-user";
 
-const ROOT_DIR = process.cwd();
-const PUBLIC_DIR = path.join(ROOT_DIR, "public");
+const APP_ROOT = process.env.LOCAL_SHARE_APP_ROOT ? path.resolve(process.env.LOCAL_SHARE_APP_ROOT) : process.cwd();
+const ROOT_DIR = process.env.LOCAL_SHARE_DATA_DIR ? path.resolve(process.env.LOCAL_SHARE_DATA_DIR) : process.cwd();
+const PUBLIC_DIR = process.env.LOCAL_SHARE_PUBLIC_DIR
+	? path.resolve(process.env.LOCAL_SHARE_PUBLIC_DIR)
+	: path.join(APP_ROOT, "public");
 const RECEIVED_DIR = path.join(ROOT_DIR, "received");
 const ALLOWED_USERS_FILE = path.join(ROOT_DIR, ".allowedusers");
 
@@ -372,7 +376,7 @@ async function startServer() {
 					return unauthorized();
 				}
 
-				const validPassword = await Bun.password.verify(password, storedHash);
+				const validPassword = await verifyPassword(password, storedHash);
 				if (!validPassword) {
 					return unauthorized();
 				}
