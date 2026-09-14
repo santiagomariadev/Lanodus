@@ -16,8 +16,8 @@ test("buildAdvertisedService creates bonjour metadata for host mode", () => {
     port: 3000,
   });
 
-  assert.equal(service.type, "_localshare._tcp");
+  assert.equal(service.type, "_lanodus._tcp");
   assert.equal(service.port, 3000);
-  assert.equal(service.name, "testhost Local Share");
+  assert.equal(service.name, "testhost Lanodus");
   assert.equal(service.txt.host, "testhost");
 });

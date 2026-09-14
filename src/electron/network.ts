@@ -45,8 +45,8 @@ export function buildAdvertisedService({
   port?: number;
 }) {
   return {
-    name: `${hostname} Local Share`,
-    type: "_localshare._tcp",
+    name: `${hostname} Lanodus`,
+    type: "_lanodus._tcp",
     port,
     txt: {
       path: "/",

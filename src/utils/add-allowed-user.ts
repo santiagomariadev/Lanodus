@@ -10,7 +10,7 @@ type BunPasswordApi = {
   verify: (password: string, hash: string) => Promise<boolean>;
 };
 
-export function getAllowedUsersFilePath(dataDir = process.env.LOCAL_SHARE_DATA_DIR) {
+export function getAllowedUsersFilePath(dataDir = process.env.LANODUS_DATA_DIR) {
   return path.join(
     dataDir ? path.resolve(dataDir) : process.cwd(),
     ".allowedusers",
@@ -64,7 +64,7 @@ export async function verifyPassword(password: string, storedHash: string) {
   }
 }
 
-export async function readAllowedUsers(dataDir = process.env.LOCAL_SHARE_DATA_DIR): Promise<string[]> {
+export async function readAllowedUsers(dataDir = process.env.LANODUS_DATA_DIR): Promise<string[]> {
   const usersFile = getAllowedUsersFilePath(dataDir);
 
   try {
@@ -83,7 +83,7 @@ export async function readAllowedUsers(dataDir = process.env.LOCAL_SHARE_DATA_DI
   }
 }
 
-export async function addAllowedUser(username: string, password: string, dataDir = process.env.LOCAL_SHARE_DATA_DIR) {
+export async function addAllowedUser(username: string, password: string, dataDir = process.env.LANODUS_DATA_DIR) {
   if (!username || !password) {
     throw new Error("Username and password are required.");
   }
@@ -107,7 +107,7 @@ export async function addAllowedUser(username: string, password: string, dataDir
   return filtered;
 }
 
-export async function removeAllowedUser(username: string, dataDir = process.env.LOCAL_SHARE_DATA_DIR): Promise<string[]> {
+export async function removeAllowedUser(username: string, dataDir = process.env.LANODUS_DATA_DIR): Promise<string[]> {
   const cleanUsername = username.trim();
   if (!isValidUsername(cleanUsername)) {
     throw new Error("Invalid username.");

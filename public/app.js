@@ -1,6 +1,6 @@
 import { filterItems, paginateItems } from "./listing-utils.js";
 
-const isElectron = Boolean(window.localShareApi);
+const isElectron = Boolean(window.lanodusApi);
 
 const state = {
   token: localStorage.getItem("token") || "",
@@ -128,7 +128,7 @@ function setHostUrls(hostnames) {
     link.className = "link-btn";
     link.textContent = url;
     link.addEventListener("click", async () => {
-      await window.localShareApi.openExternalUrl(url);
+      await window.lanodusApi.openExternalUrl(url);
     });
     item.appendChild(link);
     hostUrlsList.appendChild(item);
@@ -148,14 +148,14 @@ function setDiscoveredHosts(hosts) {
   for (const host of hosts) {
     const item = document.createElement("li");
     const label = document.createElement("div");
-    label.textContent = host.name || host.host || "Local Share";
+    label.textContent = host.name || host.host || "Lanodus";
     const url = document.createElement("button");
     url.type = "button";
     url.className = "link-btn";
     url.textContent = host.url || `http://${host.host}:${host.port}`;
     url.addEventListener("click", async () => {
       const target = host.url || `http://${host.host}:${host.port}`;
-      await window.localShareApi.openExternalUrl(target);
+      await window.lanodusApi.openExternalUrl(target);
     });
 
     item.appendChild(label);
@@ -170,7 +170,7 @@ async function refreshNetworkInfo() {
   }
 
   try {
-    const info = await window.localShareApi.getNetworkInfo();
+    const info = await window.lanodusApi.getNetworkInfo();
     setHostUrls(info.hostnames || []);
   } catch (error) {
     showToast(error.message || "Could not refresh host info", "err");
@@ -183,7 +183,7 @@ async function startHostBroadcast() {
   }
 
   try {
-    const info = await window.localShareApi.startHostBroadcast();
+    const info = await window.lanodusApi.startHostBroadcast();
     setHostUrls(info.urls || []);
     showToast(`Hosting on ${info.hostname}`, "ok");
   } catch (error) {
@@ -197,7 +197,7 @@ async function stopHostBroadcast() {
   }
 
   try {
-    await window.localShareApi.stopHostBroadcast();
+    await window.lanodusApi.stopHostBroadcast();
     setHostUrls([]);
     showToast("Broadcast stopped", "ok");
   } catch (error) {
@@ -211,7 +211,7 @@ async function discoverLocalHosts() {
   }
 
   try {
-    const hosts = await window.localShareApi.discoverHosts();
+    const hosts = await window.lanodusApi.discoverHosts();
     setDiscoveredHosts(hosts);
   } catch (error) {
     showToast(error.message || "Could not discover hosts", "err");
@@ -239,7 +239,7 @@ function renderAllowedUsers(users) {
     removeBtn.textContent = "Remove";
     removeBtn.addEventListener("click", async () => {
       try {
-        const refreshed = await window.localShareApi.removeAllowedUser(username);
+        const refreshed = await window.lanodusApi.removeAllowedUser(username);
         renderAllowedUsers(refreshed);
         showToast(`Removed ${username}`, "ok");
       } catch (error) {
@@ -401,13 +401,13 @@ async function loadFiles(page = state.filePage, search = state.fileSearch) {
 }
 
 async function openUserManager() {
-  if (!isElectron || !window.localShareApi || typeof window.localShareApi.listAllowedUsers !== "function") {
+  if (!isElectron || !window.lanodusApi || typeof window.lanodusApi.listAllowedUsers !== "function") {
     showToast("User management is only available in the Electron host app.", "err");
     return;
   }
 
   try {
-    const users = await window.localShareApi.listAllowedUsers();
+    const users = await window.lanodusApi.listAllowedUsers();
     renderAllowedUsers(users);
     userManagerModal.classList.remove("hidden");
     userManagerModal.setAttribute("aria-hidden", "false");
@@ -648,7 +648,7 @@ userForm.addEventListener("submit", async (event) => {
   }
 
   try {
-    const users = await window.localShareApi.createAllowedUser(username, password);
+    const users = await window.lanodusApi.createAllowedUser(username, password);
     renderAllowedUsers(users);
     userForm.reset();
     showToast(`Created ${username}`, "ok");

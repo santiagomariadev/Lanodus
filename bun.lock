@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "local-share-system",
+      "name": "lanodus",
       "dependencies": {
         "bonjour": "^3.0.0",
       },

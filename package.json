@@ -1,5 +1,5 @@
 {
-  "name": "local-share-system",
+  "name": "lanodus",
   "main": "dist/electron/main.js",
   "version": "1.0.0",
   "author": {
@@ -29,8 +29,8 @@
     "typescript": "^5.6.3"
   },
   "build": {
-    "appId": "com.localsharesystem.app",
-    "productName": "Local Share System",
+    "appId": "com.lanodus.app",
+    "productName": "Lanodus",
     "directories": {
       "output": "release"
     },

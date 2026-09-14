@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-contextBridge.exposeInMainWorld("localShareApi", {
+contextBridge.exposeInMainWorld("lanodusApi", {
   getNetworkInfo: () => ipcRenderer.invoke("get-network-info"),
   startHostBroadcast: () => ipcRenderer.invoke("start-host-broadcast"),
   stopHostBroadcast: () => ipcRenderer.invoke("stop-host-broadcast"),

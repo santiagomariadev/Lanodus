@@ -2,10 +2,10 @@ import { appendFile, mkdir, readdir, readFile, stat, unlink } from "node:fs/prom
 import path from "node:path";
 import { verifyPassword } from "./utils/add-allowed-user";
 
-const APP_ROOT = process.env.LOCAL_SHARE_APP_ROOT ? path.resolve(process.env.LOCAL_SHARE_APP_ROOT) : process.cwd();
-const ROOT_DIR = process.env.LOCAL_SHARE_DATA_DIR ? path.resolve(process.env.LOCAL_SHARE_DATA_DIR) : process.cwd();
-const PUBLIC_DIR = process.env.LOCAL_SHARE_PUBLIC_DIR
-	? path.resolve(process.env.LOCAL_SHARE_PUBLIC_DIR)
+const APP_ROOT = process.env.LANODUS_APP_ROOT ? path.resolve(process.env.LANODUS_APP_ROOT) : process.cwd();
+const ROOT_DIR = process.env.LANODUS_DATA_DIR ? path.resolve(process.env.LANODUS_DATA_DIR) : process.cwd();
+const PUBLIC_DIR = process.env.LANODUS_PUBLIC_DIR
+	? path.resolve(process.env.LANODUS_PUBLIC_DIR)
 	: path.join(APP_ROOT, "public");
 const RECEIVED_DIR = path.join(ROOT_DIR, "received");
 const ALLOWED_USERS_FILE = path.join(ROOT_DIR, ".allowedusers");
@@ -585,7 +585,7 @@ async function startServer() {
 		},
 	});
 
-	console.log(`Local Share server listening on http://localhost:${server.port}`);
+	console.log(`Lanodus server listening on http://localhost:${server.port}`);
 }
 
 startServer();

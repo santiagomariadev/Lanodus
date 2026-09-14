@@ -5,7 +5,7 @@ This project now includes an Electron shell that starts the existing Bun HTTP se
 ## Features
 
 - Desktop devices can open the Electron app in either Host or Client mode
-- Host mode publishes a `_localshare._tcp` service over Bonjour
+- Host mode publishes a `_lanodus._tcp` service over Bonjour
 - Client mode can discover available shared hosts on the LAN
 - Mobile devices still connect by IP in the browser on the same LAN
 

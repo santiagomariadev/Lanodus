@@ -13,7 +13,7 @@ import { buildAdvertisedService, buildHostUrls } from "./network";
 
 const PORT = Number(process.env.PORT || 3000);
 const APP_ROOT = app.isPackaged ? app.getAppPath() : path.resolve(__dirname, "..", "..");
-const DATA_ROOT = path.join(app.getPath("userData"), "local-share-system");
+const DATA_ROOT = path.join(app.getPath("userData"), "lanodus");
 const CHILD_CWD = app.isPackaged ? path.dirname(process.resourcesPath || app.getPath("home")) : APP_ROOT;
 const PUBLIC_DIR = app.isPackaged ? path.join(process.resourcesPath, "public") : path.join(APP_ROOT, "public");
 const SERVER_ENTRY = app.isPackaged
@@ -87,7 +87,7 @@ function waitForServer(): Promise<void> {
       }
 
       if (Date.now() - startedAt > timeoutMs) {
-        reject(new Error("Timed out waiting for Local Share server to start."));
+        reject(new Error("Timed out waiting for Lanodus server to start."));
         return;
       }
 
@@ -98,7 +98,7 @@ function waitForServer(): Promise<void> {
   });
 }
 
-function startLocalShareServer(): Promise<void> {
+function startLanodusServer(): Promise<void> {
   if (serverProcess) {
     return Promise.resolve();
   }
@@ -112,9 +112,9 @@ function startLocalShareServer(): Promise<void> {
     const env = {
       ...process.env,
       PORT: String(PORT),
-      LOCAL_SHARE_APP_ROOT: APP_ROOT,
-      LOCAL_SHARE_PUBLIC_DIR: PUBLIC_DIR,
-      LOCAL_SHARE_DATA_DIR: DATA_ROOT,
+      LANODUS_APP_ROOT: APP_ROOT,
+      LANODUS_PUBLIC_DIR: PUBLIC_DIR,
+      LANODUS_DATA_DIR: DATA_ROOT,
     };
 
     const serverCommand = app.isPackaged ? "bun" : "bun";
@@ -132,8 +132,8 @@ function startLocalShareServer(): Promise<void> {
     const onData = (chunk: Buffer | string) => {
       const text = chunk.toString();
       childOutput += text;
-      console.log("[local-share-server]", text.trim());
-      if (!settled && text.includes("Local Share server listening")) {
+      console.log("[lanodus-server]", text.trim());
+      if (!settled && text.includes("Lanodus server listening")) {
         serverReady = true;
         settled = true;
         resolve();
@@ -161,7 +161,7 @@ function startLocalShareServer(): Promise<void> {
         }
 
         settled = true;
-        reject(new Error(`Local Share server exited with code ${code}. Output: ${childOutput.trim() || "(no output)"}`));
+        reject(new Error(`Lanodus server exited with code ${code}. Output: ${childOutput.trim() || "(no output)"}`));
       }
     });
 
@@ -209,8 +209,8 @@ function publishHostService() {
 function discoverHosts(): Promise<Array<{ name: string; host: string; port: number; url: string }>> {
   return new Promise((resolve) => {
     const discovered = new Map<string, { name: string; host: string; port: number; url: string }>();
-    const browser = bonjour().find({ type: "_localshare._tcp" }, (service: any) => {
-      const name = service.name || "Local Share";
+    const browser = bonjour().find({ type: "_lanodus._tcp" }, (service: any) => {
+      const name = service.name || "Lanodus";
       const host = service.hostname || service.host || "localhost";
       const port = service.port || PORT;
       const url = `http://${host}:${port}`;
@@ -235,7 +235,7 @@ function createWindow(): BrowserWindow {
     height: 820,
     minWidth: 960,
     minHeight: 700,
-    title: "Local Share System",
+    title: "Lanodus",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -256,9 +256,9 @@ function createWindow(): BrowserWindow {
 
 app.whenReady().then(async () => {
   try {
-    await startLocalShareServer();
+    await startLanodusServer();
   } catch (error) {
-    console.error("Failed to start Local Share server:", error);
+    console.error("Failed to start Lanodus server:", error);
     app.quit();
     return;
   }

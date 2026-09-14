@@ -1,4 +1,4 @@
-# Local Share System
+# Lanodus
 
 A zero-config way to move files and text between devices on the same LAN.
 It runs as a small [Bun](https://bun.sh) web server on its own, or as a
@@ -9,8 +9,8 @@ network automatically over mDNS — no typing IP addresses.
 
 - **LAN discovery, not manual IPs.** The Electron app can run in *Host
   mode* (advertises itself on the network via Bonjour/mDNS as
-  `_localshare._tcp`) or *Client mode* (browses the LAN for other Local
-  Share hosts and lets you open them with one click).
+  `_lanodus._tcp`) or *Client mode* (browses the LAN for other Lanodus
+  hosts and lets you open them with one click).
 - **Per-user storage.** Each account gets its own file directory
   (`received/<username>/`) and its own text history
   (`received/<username>/.clipboard`) — accounts don't see each other's data.
@@ -37,11 +37,11 @@ network automatically over mDNS — no typing IP addresses.
   - **Host mode** advertises the server on the LAN via Bonjour so other
     instances can find it, and shows every local network URL you can
     reach it from.
-  - **Client mode** discovers other Local Share hosts on the network and
+  - **Client mode** discovers other Lanodus hosts on the network and
     opens them in an external browser.
   - The renderer never touches Node or the filesystem directly: it only
     talks to the main process through a narrow API
-    (`window.localShareApi`) exposed via `contextBridge`, with
+    (`window.lanodusApi`) exposed via `contextBridge`, with
     `contextIsolation` on and `nodeIntegration` off.
 
 ## Requirements

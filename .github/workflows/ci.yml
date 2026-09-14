@@ -51,6 +51,6 @@ jobs:
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: local-share-system-${{ github.ref_name }}
+          name: lanodus-${{ github.ref_name }}
           path: release/*.AppImage
           if-no-files-found: error
