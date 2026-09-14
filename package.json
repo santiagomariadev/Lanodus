@@ -15,7 +15,7 @@
     "electron": "bun run build && bunx electron dist/electron/main.js",
     "add-user": "bun scripts/add-allowed-user.ts",
     "check": "bunx tsc --noEmit",
-    "test": "bun run build && node --test tests/network-discovery.test.js",
+    "test": "bun run build && node --test tests/*.test.js",
     "release:appimage": "bun run build && bunx electron-builder build --linux AppImage"
   },
   "dependencies": {
