@@ -335,6 +335,28 @@ button.ghost {
   margin-bottom: 1rem;
 }
 
+.listing-toolbar {
+  margin: 1rem 0 0.75rem;
+}
+
+.search-input {
+  width: min(320px, 100%);
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  color: var(--muted);
+}
+
+.pagination-bar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .table-wrapper {
   overflow: auto;
   border: 1px solid #345371;
@@ -371,6 +393,12 @@ td:nth-child(2) {
   padding: 0.45rem 0.72rem;
   border-radius: 8px;
   font-size: 0.82rem;
+}
+
+.small-btn.danger {
+  background: rgba(255, 116, 116, 0.12);
+  color: var(--text);
+  border: 1px solid rgba(255, 116, 116, 0.4);
 }
 
 .toast-container {

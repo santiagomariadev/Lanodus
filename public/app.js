@@ -1,3 +1,5 @@
+import { filterItems, paginateItems } from "./listing-utils.js";
+
 const isElectron = Boolean(window.localShareApi);
 
 const state = {
@@ -5,6 +7,10 @@ const state = {
   username: localStorage.getItem("username") || "",
   selectedFile: null,
   desktopMode: "host",
+  filePage: 1,
+  textPage: 1,
+  fileSearch: "",
+  textSearch: "",
 };
 
 const loginCard = document.getElementById("login-card");
@@ -37,10 +43,19 @@ const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("file-input");
 const selectedFileEl = document.getElementById("selected-file");
 const uploadFileBtn = document.getElementById("upload-file-btn");
+const fileSearchInput = document.getElementById("file-search");
+const fileRows = document.getElementById("file-rows");
+const filePageIndicator = document.getElementById("file-page-indicator");
+const filePrevBtn = document.getElementById("file-prev-btn");
+const fileNextBtn = document.getElementById("file-next-btn");
 
 const textForm = document.getElementById("text-form");
 const textInput = document.getElementById("text-input");
 const textRows = document.getElementById("text-rows");
+const textSearchInput = document.getElementById("text-search");
+const textPageIndicator = document.getElementById("text-page-indicator");
+const textPrevBtn = document.getElementById("text-prev-btn");
+const textNextBtn = document.getElementById("text-next-btn");
 
 const toastContainer = document.getElementById("toast-container");
 
@@ -238,6 +253,153 @@ function renderAllowedUsers(users) {
   }
 }
 
+function updatePaginationControls(indicator, prevBtn, nextBtn, page, totalPages) {
+  indicator.textContent = `Page ${page} / ${totalPages}`;
+  prevBtn.disabled = page <= 1;
+  nextBtn.disabled = page >= totalPages;
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 B";
+  }
+
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** exponent;
+  return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
+}
+
+async function downloadFile(file) {
+  const res = await fetch(file.downloadUrl, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(payload.error || "Could not download file");
+  }
+
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = file.name || "download";
+  anchor.rel = "noopener";
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+async function deleteFile(file) {
+  const res = await api(file.downloadUrl, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+
+  const payload = await res.json();
+  if (!res.ok) {
+    throw new Error(payload.error || "Could not delete file");
+  }
+
+  await loadFiles(1, state.fileSearch);
+  showToast(`Deleted ${file.name}`, "ok");
+}
+
+async function deleteTextEntry(item) {
+  const res = await api("/api/texts", {
+    method: "DELETE",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ at: item.at, text: item.text }),
+  });
+
+  const payload = await res.json();
+  if (!res.ok) {
+    throw new Error(payload.error || "Could not delete text");
+  }
+
+  await loadTexts(1, state.textSearch);
+  showToast("Deleted text", "ok");
+}
+
+async function loadFiles(page = state.filePage, search = state.fileSearch) {
+  if (!state.token) {
+    return;
+  }
+
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: "8",
+    search,
+  });
+
+  const res = await api(`/api/files?${params.toString()}`, {
+    headers: authHeaders(),
+  });
+  const payload = await res.json();
+  if (!res.ok) {
+    throw new Error(payload.error || "Could not load files");
+  }
+
+  const files = payload.items || [];
+  state.filePage = payload.page || 1;
+  fileRows.innerHTML = "";
+
+  if (!files.length) {
+    const row = document.createElement("tr");
+    row.innerHTML = '<td colspan="4">No uploaded files yet.</td>';
+    fileRows.appendChild(row);
+    updatePaginationControls(filePageIndicator, filePrevBtn, fileNextBtn, state.filePage, payload.totalPages || 1);
+    return;
+  }
+
+  for (const file of files) {
+    const row = document.createElement("tr");
+
+    const nameCell = document.createElement("td");
+    const sizeCell = document.createElement("td");
+    const uploadedCell = document.createElement("td");
+    const actionCell = document.createElement("td");
+
+    nameCell.textContent = file.name || "Unnamed file";
+    sizeCell.textContent = formatBytes(file.size || 0);
+    uploadedCell.textContent = new Date(file.uploadedAt).toLocaleString();
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "small-btn";
+    openBtn.textContent = "Open";
+    openBtn.addEventListener("click", async () => {
+      try {
+        await downloadFile(file);
+      } catch (error) {
+        showToast(error.message || "Could not open file", "err");
+      }
+    });
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "small-btn danger";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", async () => {
+      try {
+        await deleteFile(file);
+      } catch (error) {
+        showToast(error.message || "Could not delete file", "err");
+      }
+    });
+
+    actionCell.appendChild(openBtn);
+    actionCell.appendChild(deleteBtn);
+    row.appendChild(nameCell);
+    row.appendChild(sizeCell);
+    row.appendChild(uploadedCell);
+    row.appendChild(actionCell);
+    fileRows.appendChild(row);
+  }
+
+  updatePaginationControls(filePageIndicator, filePrevBtn, fileNextBtn, payload.page || 1, payload.totalPages || 1);
+}
+
 async function openUserManager() {
   if (!isElectron || !window.localShareApi || typeof window.localShareApi.listAllowedUsers !== "function") {
     showToast("User management is only available in the Electron host app.", "err");
@@ -289,6 +451,12 @@ async function api(url, options = {}) {
 function logout() {
   state.token = "";
   state.username = "";
+  state.filePage = 1;
+  state.textPage = 1;
+  state.fileSearch = "";
+  state.textSearch = "";
+  fileSearchInput.value = "";
+  textSearchInput.value = "";
   localStorage.removeItem("token");
   localStorage.removeItem("username");
   setAuthedView();
@@ -312,7 +480,10 @@ async function login(username, password) {
   localStorage.setItem("token", state.token);
   localStorage.setItem("username", state.username);
   setAuthedView();
-  await loadTexts();
+  await Promise.all([
+    loadFiles(1, state.fileSearch),
+    loadTexts(1, state.textSearch),
+  ]);
 }
 
 function setSelectedFile(file) {
@@ -360,8 +531,8 @@ async function uploadText(text) {
   showToast("Text uploaded", "ok");
 }
 
-async function loadTexts() {
-  const res = await api("/api/texts?limit=40", {
+async function loadTexts(page = state.textPage, search = state.textSearch) {
+  const res = await api(`/api/texts?limit=200&search=${encodeURIComponent(search)}`, {
     headers: authHeaders(),
   });
 
@@ -370,7 +541,11 @@ async function loadTexts() {
     throw new Error(payload.error || "Could not load texts");
   }
 
-  renderTextRows(payload.items || []);
+  const allItems = filterItems(payload.items || [], search);
+  const pageData = paginateItems(allItems, page, 8);
+  state.textPage = pageData.page;
+  renderTextRows(pageData.items);
+  updatePaginationControls(textPageIndicator, textPrevBtn, textNextBtn, pageData.page, pageData.totalPages);
 }
 
 function renderTextRows(items) {
@@ -405,7 +580,19 @@ function renderTextRows(items) {
       }
     });
 
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "small-btn danger";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", async () => {
+      try {
+        await deleteTextEntry(item);
+      } catch (error) {
+        showToast(error.message || "Could not delete text", "err");
+      }
+    });
+
     actionCell.appendChild(copyBtn);
+    actionCell.appendChild(deleteBtn);
     row.appendChild(dateCell);
     row.appendChild(textCell);
     row.appendChild(actionCell);
@@ -486,14 +673,83 @@ tabs.forEach((tabBtn) => {
   tabBtn.addEventListener("click", async () => {
     const tab = tabBtn.dataset.tab;
     setActiveTab(tab);
+    if (tab === "files" && state.token) {
+      try {
+        await loadFiles(1, state.fileSearch);
+      } catch (error) {
+        showToast(error.message || "Failed to load files", "err");
+      }
+    }
     if (tab === "text" && state.token) {
       try {
-        await loadTexts();
+        await loadTexts(1, state.textSearch);
       } catch (error) {
         showToast(error.message || "Failed to load text", "err");
       }
     }
   });
+});
+
+fileSearchInput.addEventListener("input", async (event) => {
+  state.fileSearch = event.target.value;
+  state.filePage = 1;
+  try {
+    await loadFiles(1, state.fileSearch);
+  } catch (error) {
+    showToast(error.message || "Could not search files", "err");
+  }
+});
+
+filePrevBtn.addEventListener("click", async () => {
+  if (state.filePage <= 1) {
+    return;
+  }
+
+  try {
+    await loadFiles(state.filePage - 1, state.fileSearch);
+  } catch (error) {
+    showToast(error.message || "Could not load previous files", "err");
+  }
+});
+
+fileNextBtn.addEventListener("click", async () => {
+  try {
+    const current = state.filePage || 1;
+    await loadFiles(current + 1, state.fileSearch);
+  } catch (error) {
+    showToast(error.message || "Could not load next files", "err");
+  }
+});
+
+textSearchInput.addEventListener("input", async (event) => {
+  state.textSearch = event.target.value;
+  state.textPage = 1;
+  try {
+    await loadTexts(1, state.textSearch);
+  } catch (error) {
+    showToast(error.message || "Could not search text", "err");
+  }
+});
+
+textPrevBtn.addEventListener("click", async () => {
+  if (state.textPage <= 1) {
+    return;
+  }
+
+  try {
+    await loadTexts(state.textPage - 1, state.textSearch);
+  } catch (error) {
+    showToast(error.message || "Could not load previous text", "err");
+  }
+});
+
+textNextBtn.addEventListener("click", async () => {
+  try {
+    const current = state.textPage || 1;
+    await loadTexts(current + 1, state.textSearch);
+  } catch (error) {
+    showToast(error.message || "Could not load next text", "err");
+  }
 });
 
 fileInput.addEventListener("change", () => {
@@ -521,6 +777,7 @@ dropzone.addEventListener("drop", (event) => {
 uploadFileBtn.addEventListener("click", async () => {
   try {
     await uploadSelectedFile();
+    await loadFiles(1, state.fileSearch);
   } catch (error) {
     showToast(error.message || "Upload failed", "err");
   }
@@ -552,7 +809,10 @@ if (isElectron) {
 }
 
 if (state.token && state.username) {
-  loadTexts().catch(() => {
+  Promise.all([
+    loadFiles(1, state.fileSearch),
+    loadTexts(1, state.textSearch),
+  ]).catch(() => {
     logout();
   });
 }

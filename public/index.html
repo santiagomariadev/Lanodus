@@ -86,6 +86,30 @@
             <span>Selected:</span> <strong id="selected-file">None</strong>
           </div>
           <button id="upload-file-btn">Upload File</button>
+
+          <div class="listing-toolbar">
+            <input id="file-search" class="search-input" type="search" placeholder="Search files..." />
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Size</th>
+                  <th>Uploaded</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="file-rows"></tbody>
+            </table>
+          </div>
+
+          <div class="pagination-bar">
+            <button id="file-prev-btn" type="button" class="ghost small-btn">Previous</button>
+            <span id="file-page-indicator">Page 1</span>
+            <button id="file-next-btn" type="button" class="ghost small-btn">Next</button>
+          </div>
         </section>
 
         <section id="tab-text" class="tab-panel hidden">
@@ -93,6 +117,10 @@
             <input id="text-input" maxlength="5000" placeholder="Write or paste text to upload" required />
             <button type="submit">Upload Text</button>
           </form>
+
+          <div class="listing-toolbar">
+            <input id="text-search" class="search-input" type="search" placeholder="Search text..." />
+          </div>
 
           <div class="table-wrapper">
             <table>
@@ -105,6 +133,12 @@
               </thead>
               <tbody id="text-rows"></tbody>
             </table>
+          </div>
+
+          <div class="pagination-bar">
+            <button id="text-prev-btn" type="button" class="ghost small-btn">Previous</button>
+            <span id="text-page-indicator">Page 1</span>
+            <button id="text-next-btn" type="button" class="ghost small-btn">Next</button>
           </div>
         </section>
       </section>
