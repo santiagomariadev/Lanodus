@@ -1,16 +1,88 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import * as path from "node:path";
 import * as os from "node:os";
+import { readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import bonjour from "bonjour";
 import { buildAdvertisedService, buildHostUrls } from "./network";
 
 const PORT = Number(process.env.PORT || 3000);
 const APP_ROOT = path.resolve(__dirname, "..", "..");
+const USERS_FILE = path.join(APP_ROOT, ".allowedusers");
 
 let serverProcess: ReturnType<typeof spawn> | null = null;
 let serverReady = false;
 let hostAdvertiser: { stop: () => void } | null = null;
+
+function isValidUsername(username: string) {
+  return /^[a-zA-Z0-9._-]{3,32}$/.test(username);
+}
+
+async function readAllowedUsersFromDisk(): Promise<string[]> {
+  try {
+    const file = await readFile(USERS_FILE, "utf8");
+    return file
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => line.split(":::")[0])
+      .filter((username): username is string => Boolean(username));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+}
+
+async function createAllowedUser(username: string, password: string): Promise<string[]> {
+  const cleanUsername = username.trim();
+  if (!isValidUsername(cleanUsername) || !password) {
+    throw new Error("Use 3-32 chars for the username and provide a password.");
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn("bun", ["run", "add-user", "--", cleanUsername, password], {
+      cwd: APP_ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stderr = "";
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(stderr || `Failed to create user '${cleanUsername}'.`));
+    });
+  });
+
+  return readAllowedUsersFromDisk();
+}
+
+async function removeAllowedUser(username: string): Promise<string[]> {
+  const cleanUsername = username.trim();
+  if (!isValidUsername(cleanUsername)) {
+    throw new Error("Invalid username.");
+  }
+
+  const existing = await readAllowedUsersFromDisk();
+  const remaining = existing.filter((entry) => entry !== cleanUsername);
+
+  const file = await readFile(USERS_FILE, "utf8").catch(() => "");
+  const filtered = file
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith(`${cleanUsername}:::`));
+
+  await writeFile(USERS_FILE, `${filtered.join("\n")}${filtered.length ? "\n" : ""}`, "utf8");
+  return remaining;
+}
 
 function getLocalAddresses(): string[] {
   const interfaces = os.networkInterfaces();
@@ -233,6 +305,16 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle("discover-hosts", async () => discoverHosts());
+
+  ipcMain.handle("list-allowed-users", async () => readAllowedUsersFromDisk());
+
+  ipcMain.handle("create-allowed-user", async (_event, username: string, password: string) =>
+    createAllowedUser(username, password),
+  );
+
+  ipcMain.handle("remove-allowed-user", async (_event, username: string) =>
+    removeAllowedUser(username),
+  );
 
   ipcMain.handle("open-external-url", async (_event, url: string) => {
     if (!url) {

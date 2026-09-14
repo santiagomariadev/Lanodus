@@ -19,7 +19,14 @@ const hostNetworkPanel = document.getElementById("host-network-panel");
 const clientNetworkPanel = document.getElementById("client-network-panel");
 const startHostBtn = document.getElementById("start-host-btn");
 const stopHostBtn = document.getElementById("stop-host-btn");
+const manageUsersBtn = document.getElementById("manage-users-btn");
 const discoverBtn = document.getElementById("discover-btn");
+const userManagerModal = document.getElementById("user-manager-modal");
+const closeUserModalBtn = document.getElementById("close-user-modal");
+const userForm = document.getElementById("user-form");
+const allowedUserList = document.getElementById("allowed-user-list");
+const newUserNameInput = document.getElementById("new-user-name");
+const newUserPasswordInput = document.getElementById("new-user-password");
 const modeButtons = Array.from(document.querySelectorAll(".mode-btn"));
 
 const tabs = Array.from(document.querySelectorAll(".tab"));
@@ -63,6 +70,7 @@ function setDesktopDiscoveryVisible() {
   desktopDiscovery.classList.remove("hidden");
   hostNetworkPanel.classList.toggle("hidden", state.desktopMode !== "host");
   clientNetworkPanel.classList.toggle("hidden", state.desktopMode !== "client");
+  manageUsersBtn.classList.toggle("hidden", state.desktopMode !== "host");
 
   modeButtons.forEach((button) => {
     const isActive = button.dataset.mode === state.desktopMode;
@@ -193,6 +201,63 @@ async function discoverLocalHosts() {
   } catch (error) {
     showToast(error.message || "Could not discover hosts", "err");
   }
+}
+
+function renderAllowedUsers(users) {
+  allowedUserList.innerHTML = "";
+
+  if (!users?.length) {
+    const item = document.createElement("li");
+    item.textContent = "No users configured yet.";
+    allowedUserList.appendChild(item);
+    return;
+  }
+
+  for (const username of users) {
+    const item = document.createElement("li");
+    const label = document.createElement("span");
+    label.textContent = username;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "small-btn remove-user-btn";
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", async () => {
+      try {
+        const refreshed = await window.localShareApi.removeAllowedUser(username);
+        renderAllowedUsers(refreshed);
+        showToast(`Removed ${username}`, "ok");
+      } catch (error) {
+        showToast(error.message || "Failed to remove user", "err");
+      }
+    });
+
+    item.appendChild(label);
+    item.appendChild(removeBtn);
+    allowedUserList.appendChild(item);
+  }
+}
+
+async function openUserManager() {
+  if (!isElectron || !window.localShareApi || typeof window.localShareApi.listAllowedUsers !== "function") {
+    showToast("User management is only available in the Electron host app.", "err");
+    return;
+  }
+
+  try {
+    const users = await window.localShareApi.listAllowedUsers();
+    renderAllowedUsers(users);
+    userManagerModal.classList.remove("hidden");
+    userManagerModal.setAttribute("aria-hidden", "false");
+  } catch (error) {
+    showToast(error.message || "Could not load users", "err");
+  }
+}
+
+function closeUserManager() {
+  userManagerModal.classList.add("hidden");
+  userManagerModal.setAttribute("aria-hidden", "true");
+  userForm.reset();
 }
 
 function setActiveTab(tab) {
@@ -367,8 +432,42 @@ modeButtons.forEach((button) => {
   button.addEventListener("click", () => setDesktopMode(button.dataset.mode));
 });
 
+manageUsersBtn.addEventListener("click", () => {
+  openUserManager();
+});
+
 startHostBtn.addEventListener("click", () => {
   startHostBroadcast();
+});
+
+closeUserModalBtn.addEventListener("click", () => {
+  closeUserManager();
+});
+
+userManagerModal.addEventListener("click", (event) => {
+  if (event.target === userManagerModal) {
+    closeUserManager();
+  }
+});
+
+userForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const username = String(newUserNameInput.value || "").trim();
+  const password = String(newUserPasswordInput.value || "");
+
+  if (!username || !password) {
+    showToast("Username and password are required", "err");
+    return;
+  }
+
+  try {
+    const users = await window.localShareApi.createAllowedUser(username, password);
+    renderAllowedUsers(users);
+    userForm.reset();
+    showToast(`Created ${username}`, "ok");
+  } catch (error) {
+    showToast(error.message || "Could not create user", "err");
+  }
 });
 
 stopHostBtn.addEventListener("click", () => {
