@@ -49,9 +49,14 @@ export async function verifyPassword(password: string, storedHash: string) {
 
   const iterations = Number(parts[1]);
   const salt = parts[2];
-  const expected = Buffer.from(parts[3], "base64");
+  const encoded = parts[3];
+
+  if (!Number.isFinite(iterations) || !salt || !encoded) {
+    return false;
+  }
 
   try {
+    const expected = Buffer.from(encoded, "base64");
     const computed = pbkdf2Sync(password, salt, iterations, expected.length, "sha256");
     return timingSafeEqual(computed, expected);
   } catch {
