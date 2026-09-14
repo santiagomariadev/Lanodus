@@ -1,7 +1,10 @@
+const isElectron = Boolean(window.localShareApi);
+
 const state = {
   token: localStorage.getItem("token") || "",
   username: localStorage.getItem("username") || "",
   selectedFile: null,
+  desktopMode: "host",
 };
 
 const loginCard = document.getElementById("login-card");
@@ -9,6 +12,15 @@ const dashboard = document.getElementById("dashboard");
 const loginForm = document.getElementById("login-form");
 const logoutBtn = document.getElementById("logout-btn");
 const currentUserEl = document.getElementById("current-user");
+const desktopDiscovery = document.getElementById("desktop-discovery");
+const hostUrlsList = document.getElementById("host-urls");
+const discoveredHostsList = document.getElementById("discovered-hosts");
+const hostNetworkPanel = document.getElementById("host-network-panel");
+const clientNetworkPanel = document.getElementById("client-network-panel");
+const startHostBtn = document.getElementById("start-host-btn");
+const stopHostBtn = document.getElementById("stop-host-btn");
+const discoverBtn = document.getElementById("discover-btn");
+const modeButtons = Array.from(document.querySelectorAll(".mode-btn"));
 
 const tabs = Array.from(document.querySelectorAll(".tab"));
 const tabFiles = document.getElementById("tab-files");
@@ -40,6 +52,147 @@ function setAuthedView() {
   loginCard.classList.toggle("hidden", authed);
   dashboard.classList.toggle("hidden", !authed);
   currentUserEl.textContent = state.username;
+}
+
+function setDesktopDiscoveryVisible() {
+  if (!isElectron) {
+    desktopDiscovery.classList.add("hidden");
+    return;
+  }
+
+  desktopDiscovery.classList.remove("hidden");
+  hostNetworkPanel.classList.toggle("hidden", state.desktopMode !== "host");
+  clientNetworkPanel.classList.toggle("hidden", state.desktopMode !== "client");
+
+  modeButtons.forEach((button) => {
+    const isActive = button.dataset.mode === state.desktopMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+}
+
+function setDesktopMode(mode) {
+  state.desktopMode = mode;
+  setDesktopDiscoveryVisible();
+
+  if (!isElectron) {
+    return;
+  }
+
+  if (mode === "host") {
+    refreshNetworkInfo();
+  }
+
+  if (mode === "client") {
+    discoverLocalHosts();
+  }
+}
+
+function setHostUrls(hostnames) {
+  hostUrlsList.innerHTML = "";
+
+  if (!hostnames?.length) {
+    const item = document.createElement("li");
+    item.textContent = "No hostnames available yet.";
+    hostUrlsList.appendChild(item);
+    return;
+  }
+
+  for (const url of hostnames) {
+    const item = document.createElement("li");
+    const link = document.createElement("button");
+    link.type = "button";
+    link.className = "link-btn";
+    link.textContent = url;
+    link.addEventListener("click", async () => {
+      await window.localShareApi.openExternalUrl(url);
+    });
+    item.appendChild(link);
+    hostUrlsList.appendChild(item);
+  }
+}
+
+function setDiscoveredHosts(hosts) {
+  discoveredHostsList.innerHTML = "";
+
+  if (!hosts?.length) {
+    const item = document.createElement("li");
+    item.textContent = "No hosts found yet.";
+    discoveredHostsList.appendChild(item);
+    return;
+  }
+
+  for (const host of hosts) {
+    const item = document.createElement("li");
+    const label = document.createElement("div");
+    label.textContent = host.name || host.host || "Local Share";
+    const url = document.createElement("button");
+    url.type = "button";
+    url.className = "link-btn";
+    url.textContent = host.url || `http://${host.host}:${host.port}`;
+    url.addEventListener("click", async () => {
+      const target = host.url || `http://${host.host}:${host.port}`;
+      await window.localShareApi.openExternalUrl(target);
+    });
+
+    item.appendChild(label);
+    item.appendChild(url);
+    discoveredHostsList.appendChild(item);
+  }
+}
+
+async function refreshNetworkInfo() {
+  if (!isElectron) {
+    return;
+  }
+
+  try {
+    const info = await window.localShareApi.getNetworkInfo();
+    setHostUrls(info.hostnames || []);
+  } catch (error) {
+    showToast(error.message || "Could not refresh host info", "err");
+  }
+}
+
+async function startHostBroadcast() {
+  if (!isElectron) {
+    return;
+  }
+
+  try {
+    const info = await window.localShareApi.startHostBroadcast();
+    setHostUrls(info.urls || []);
+    showToast(`Hosting on ${info.hostname}`, "ok");
+  } catch (error) {
+    showToast(error.message || "Could not start hosting", "err");
+  }
+}
+
+async function stopHostBroadcast() {
+  if (!isElectron) {
+    return;
+  }
+
+  try {
+    await window.localShareApi.stopHostBroadcast();
+    setHostUrls([]);
+    showToast("Broadcast stopped", "ok");
+  } catch (error) {
+    showToast(error.message || "Could not stop hosting", "err");
+  }
+}
+
+async function discoverLocalHosts() {
+  if (!isElectron) {
+    return;
+  }
+
+  try {
+    const hosts = await window.localShareApi.discoverHosts();
+    setDiscoveredHosts(hosts);
+  } catch (error) {
+    showToast(error.message || "Could not discover hosts", "err");
+  }
 }
 
 function setActiveTab(tab) {
@@ -210,6 +363,22 @@ loginForm.addEventListener("submit", async (event) => {
   }
 });
 
+modeButtons.forEach((button) => {
+  button.addEventListener("click", () => setDesktopMode(button.dataset.mode));
+});
+
+startHostBtn.addEventListener("click", () => {
+  startHostBroadcast();
+});
+
+stopHostBtn.addEventListener("click", () => {
+  stopHostBroadcast();
+});
+
+discoverBtn.addEventListener("click", () => {
+  discoverLocalHosts();
+});
+
 logoutBtn.addEventListener("click", () => {
   logout();
 });
@@ -276,7 +445,12 @@ textForm.addEventListener("submit", async (event) => {
 });
 
 setAuthedView();
+setDesktopDiscoveryVisible();
 setActiveTab("files");
+
+if (isElectron) {
+  setDesktopMode("host");
+}
 
 if (state.token && state.username) {
   loadTexts().catch(() => {

@@ -1,18 +1,38 @@
 {
   "name": "local-share-system",
-  "module": "index.ts",
-  "type": "module",
+  "main": "dist/electron/main.js",
   "private": true,
   "scripts": {
     "dev": "bun --watch index.ts",
     "start": "bun index.ts",
+    "build": "bunx tsc -p tsconfig.electron.json",
+    "electron": "bun run build && bunx electron dist/electron/main.js",
     "add-user": "bun scripts/add-allowed-user.ts",
-    "check": "bunx tsc --noEmit"
+    "check": "bunx tsc --noEmit",
+    "test": "bun run build && node --test tests/network-discovery.test.js",
+    "release:appimage": "bun run build && bunx electron-builder build --linux AppImage"
+  },
+  "dependencies": {
+    "bonjour": "^3.0.0"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/node": "^22.10.2",
+    "electron": "^31.7.4",
+    "electron-builder": "^25.0.1",
+    "typescript": "^5.6.3"
   },
-  "peerDependencies": {
-    "typescript": "^5"
+  "build": {
+    "appId": "com.localsharesystem.app",
+    "productName": "Local Share System",
+    "directories": {
+      "output": "release"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility"
+    }
   }
 }

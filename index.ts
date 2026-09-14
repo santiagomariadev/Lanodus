@@ -136,12 +136,35 @@ async function readAllowedUsers() {
 	}
 }
 
-function jsonResponse(body: unknown, status = 200) {
+function securityHeaders(extra: Record<string, string> = {}) {
+	return {
+		"Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+		"Content-Security-Policy": [
+			"default-src 'self'",
+			"script-src 'self'",
+			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com",
+			"font-src 'self' https://fonts.gstatic.com data:",
+			"img-src 'self' data:",
+			"connect-src 'self' http://localhost:*",
+			"object-src 'none'",
+			"base-uri 'none'",
+			"frame-ancestors 'none'",
+			"form-action 'self'",
+		].join("; "),
+		"X-Content-Type-Options": "nosniff",
+		"X-Frame-Options": "DENY",
+		"Referrer-Policy": "no-referrer",
+		"Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+		"Cross-Origin-Opener-Policy": "same-origin",
+		"Cross-Origin-Resource-Policy": "same-origin",
+		...extra,
+	};
+}
+
+function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
 	return Response.json(body, {
 		status,
-		headers: {
-			"Cache-Control": "no-store",
-		},
+		headers: securityHeaders(extraHeaders),
 	});
 }
 
@@ -210,12 +233,9 @@ async function serveStatic(pathname: string) {
 		if (!fileStat.isFile()) {
 			return null;
 		}
-		return new Response(Bun.file(filePath));
-	} catch {
-		return null;
-	}
-}
-
+			return new Response(Bun.file(filePath), {
+				headers: securityHeaders(),
+			});
 await mkdir(RECEIVED_DIR, { recursive: true });
 
 const server = Bun.serve({

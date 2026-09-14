@@ -20,6 +20,29 @@
       <section id="login-card" class="card login-card">
         <h1>Local Share</h1>
         <p class="muted">Sign in with a predefined account.</p>
+
+        <div id="desktop-discovery" class="desktop-discovery hidden">
+          <div class="mode-actions" role="tablist" aria-label="Network mode">
+            <button type="button" class="mode-btn active" data-mode="host">Host mode</button>
+            <button type="button" class="mode-btn" data-mode="client">Client mode</button>
+          </div>
+
+          <div id="host-network-panel" class="mode-panel">
+            <p class="panel-label">Host URLs</p>
+            <ul id="host-urls" class="host-urls"></ul>
+            <div class="inline-actions">
+              <button id="start-host-btn" type="button">Start broadcast</button>
+              <button id="stop-host-btn" type="button" class="ghost">Stop</button>
+            </div>
+          </div>
+
+          <div id="client-network-panel" class="mode-panel hidden">
+            <p class="panel-label">Discovered hosts</p>
+            <button id="discover-btn" type="button" class="ghost">Discover on LAN</button>
+            <ul id="discovered-hosts" class="host-urls"></ul>
+          </div>
+        </div>
+
         <form id="login-form" class="form-stack">
           <label>
             Username
