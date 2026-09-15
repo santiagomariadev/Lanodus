@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lanodus</title>
+    <meta name="theme-color" content="#08131e" />
+    <link rel="icon" href="/images/lanodus-icon-1024.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/images/lanodus-icon-1024.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,8 +21,10 @@
 
     <main class="app-shell">
       <section id="login-card" class="card login-card">
-        <h1>Lanodus</h1>
-        <p class="muted">Sign in with a predefined account.</p>
+        <div class="brand-block">
+          <img class="brand-logo" src="/images/lanodus-logo.svg" alt="Lanodus" />
+          <p class="brand-tagline">Zero-config file and text sharing on the LAN.</p>
+        </div>
 
         <div id="desktop-discovery" class="desktop-discovery hidden">
           <div class="mode-actions" role="tablist" aria-label="Network mode">
@@ -65,9 +70,12 @@
 
       <section id="dashboard" class="card dashboard hidden">
         <header class="topbar">
-          <div>
-            <h2>Share Console</h2>
-            <p class="muted">Signed in as <span id="current-user"></span></p>
+          <div class="topbar-brand">
+            <img class="brand-mark" src="/images/lanodus-mark.svg" alt="" aria-hidden="true" />
+            <div>
+              <h2>Share Console</h2>
+              <p class="muted">Signed in as <span id="current-user"></span></p>
+            </div>
           </div>
           <button id="logout-btn" class="ghost">Logout</button>
         </header>

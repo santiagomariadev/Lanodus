@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, nativeImage, shell } from "electron";
 import * as path from "node:path";
 import * as os from "node:os";
 import { spawn } from "node:child_process";
@@ -17,6 +17,9 @@ const APP_ROOT = app.isPackaged ? app.getAppPath() : path.resolve(__dirname, "..
 const DATA_ROOT = path.join(app.getPath("userData"), "lanodus");
 const CHILD_CWD = app.isPackaged ? path.dirname(process.resourcesPath || app.getPath("home")) : APP_ROOT;
 const PUBLIC_DIR = app.isPackaged ? path.join(process.resourcesPath, "public") : path.join(APP_ROOT, "public");
+const APP_ICON_PATH = app.isPackaged
+  ? path.join(process.resourcesPath, "public", "images", "lanodus-icon-1024.png")
+  : path.join(APP_ROOT, "public", "images", "lanodus-icon-1024.png");
 const PACKAGED_BUN = path.join(process.resourcesPath, "bin", process.platform === "win32" ? "bun.exe" : "bun");
 const SERVER_ENTRY = app.isPackaged
   ? path.join(process.resourcesPath, "dist", "index.js")
@@ -251,12 +254,15 @@ function discoverHosts(): Promise<Array<{ name: string; host: string; port: numb
 }
 
 function createWindow(): BrowserWindow {
+  const appIcon = nativeImage.createFromPath(APP_ICON_PATH);
+
   const win = new BrowserWindow({
     width: 1180,
     height: 820,
     minWidth: 960,
     minHeight: 700,
     title: "Lanodus",
+    icon: appIcon.isEmpty() ? undefined : appIcon,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -268,6 +274,10 @@ function createWindow(): BrowserWindow {
       spellcheck: false,
     },
   });
+
+  if (process.platform === "darwin" && !appIcon.isEmpty()) {
+    app.dock.setIcon(appIcon);
+  }
 
   win.setMenuBarVisibility(false);
   win.loadURL(`http://localhost:${PORT}`);

@@ -36,6 +36,7 @@
   "build": {
     "appId": "com.lanodus.app",
     "productName": "Lanodus",
+    "icon": "public/images/lanodus-icon-1024.png",
     "directories": {
       "output": "release"
     },
