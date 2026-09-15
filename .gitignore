@@ -40,3 +40,4 @@ received/
 # Electron
 release
 bundled/bin/bun
+bundled/bin/bun.exe

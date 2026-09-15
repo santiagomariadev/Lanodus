@@ -109,6 +109,19 @@ Output lands in `release/`.
 The release script copies your local Bun binary into `bundled/bin/bun`
 before packaging, and `electron-builder` includes it in the AppImage.
 
+### Build for macOS and Windows
+
+```bash
+bun run release:mac:x64
+bun run release:mac:arm64
+bun run release:win:x64
+bun run release:win:arm64
+```
+
+These scripts also bundle Bun into the packaged app resources (`bin/`).
+If you build for a different platform than your current machine, set
+`BUN_BINARY` to a Bun executable for that target platform first.
+
 ## API summary
 
 - `POST /api/login` — body `{ "username": "...", "password": "..." }`
