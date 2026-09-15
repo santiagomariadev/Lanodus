@@ -26,22 +26,24 @@ export function buildHostUrls(
 ): string[] {
   const urls = new Set<string>();
 
-  urls.add(`http://localhost:${port}`);
-  urls.add(`http://${hostname}.local:${port}`);
-  urls.add(`http://${hostname}:${port}`);
-
   for (const address of addresses) {
     urls.add(`http://${address}:${port}`);
   }
+
+  urls.add(`http://${hostname}.local:${port}`);
+  urls.add(`http://${hostname}:${port}`);
+  urls.add(`http://localhost:${port}`);
 
   return [...urls];
 }
 
 export function buildAdvertisedService({
   hostname,
+  preferredUrl,
   port = 3000,
 }: {
   hostname: string;
+  preferredUrl?: string | null;
   port?: number;
 }) {
   return {
@@ -51,6 +53,7 @@ export function buildAdvertisedService({
     txt: {
       path: "/",
       host: hostname,
+      preferredUrl: preferredUrl || "",
     },
   };
 }

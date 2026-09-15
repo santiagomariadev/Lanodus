@@ -28,6 +28,46 @@ const SERVER_ENTRY = app.isPackaged
 let serverProcess: ReturnType<typeof spawn> | null = null;
 let serverReady = false;
 let hostAdvertiser: { stop: () => void } | null = null;
+let preferredHostUrl: string | null = null;
+
+function normalizeHttpUrl(value?: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function pickDefaultHostUrl(urls: string[]): string | null {
+  const ipv4Pattern = /^http:\/\/(\d{1,3}\.){3}\d{1,3}:\d+\/?$/;
+
+  for (const url of urls) {
+    if (ipv4Pattern.test(url)) {
+      return url;
+    }
+  }
+
+  return urls[0] || null;
+}
+
+function resolvePreferredHostUrl(urls: string[]): string | null {
+  const normalizedSelected = normalizeHttpUrl(preferredHostUrl);
+  if (normalizedSelected && urls.includes(normalizedSelected)) {
+    return normalizedSelected;
+  }
+
+  const nextDefault = pickDefaultHostUrl(urls);
+  preferredHostUrl = nextDefault;
+  return nextDefault;
+}
 
 function isValidUsername(username: string) {
   return isValidUsernameString(username);
@@ -220,13 +260,16 @@ function publishHostService() {
   stopHostService();
 
   const hostname = os.hostname();
-  const service = buildAdvertisedService({ hostname, port: PORT });
+  const urls = buildHostUrls(hostname, getLocalAddresses(), PORT);
+  const selectedUrl = resolvePreferredHostUrl(urls);
+  const service = buildAdvertisedService({ hostname, preferredUrl: selectedUrl, port: PORT });
   const mdns = bonjour();
   hostAdvertiser = mdns.publish(service);
 
   return {
     hostname,
-    urls: buildHostUrls(hostname, getLocalAddresses(), PORT),
+    preferredUrl: selectedUrl,
+    urls,
   };
 }
 
@@ -237,7 +280,10 @@ function discoverHosts(): Promise<Array<{ name: string; host: string; port: numb
       const name = service.name || "Lanodus";
       const host = service.hostname || service.host || "localhost";
       const port = service.port || PORT;
-      const url = `http://${host}:${port}`;
+      const advertisedPreferredUrl = normalizeHttpUrl(service?.txt?.preferredUrl);
+      const address = service?.referer?.address;
+      const fallbackUrl = typeof address === "string" ? `http://${address}:${port}` : `http://${host}:${port}`;
+      const url = advertisedPreferredUrl || fallbackUrl;
 
       discovered.set(name, { name, host, port, url });
     });
@@ -280,6 +326,12 @@ function createWindow(): BrowserWindow {
   }
 
   win.setMenuBarVisibility(false);
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url).catch((error) => {
+      console.warn("Could not open external URL", error);
+    });
+    return { action: "deny" };
+  });
   win.loadURL(`http://localhost:${PORT}`);
 
   return win;
@@ -299,7 +351,29 @@ app.whenReady().then(async () => {
     port: PORT,
     addresses: getLocalAddresses(),
     hostnames: buildHostUrls(os.hostname(), getLocalAddresses(), PORT),
+    preferredUrl: resolvePreferredHostUrl(buildHostUrls(os.hostname(), getLocalAddresses(), PORT)),
   }));
+
+  ipcMain.handle("set-preferred-host-url", async (_event, url: string) => {
+    const hostname = os.hostname();
+    const urls = buildHostUrls(hostname, getLocalAddresses(), PORT);
+    const normalized = normalizeHttpUrl(url);
+    if (!normalized || !urls.includes(normalized)) {
+      throw new Error("Select one of the available host URLs.");
+    }
+
+    preferredHostUrl = normalized;
+
+    if (hostAdvertiser) {
+      publishHostService();
+    }
+
+    return {
+      hostname,
+      preferredUrl: preferredHostUrl,
+      urls,
+    };
+  });
 
   ipcMain.handle("start-host-broadcast", async () => {
     await waitForServer();

@@ -34,6 +34,7 @@
 
           <div id="host-network-panel" class="mode-panel">
             <p class="panel-label">Host URLs</p>
+            <p id="host-selected-url" class="panel-hint">Shared URL: none selected</p>
             <ul id="host-urls" class="host-urls"></ul>
             <div class="inline-actions">
               <button id="start-host-btn" type="button">Start broadcast</button>
@@ -44,6 +45,8 @@
 
           <div id="client-network-panel" class="mode-panel hidden">
             <p class="panel-label">Discovered hosts</p>
+            <p id="client-selected-host" class="panel-hint">Connected host: local app</p>
+            <button id="clear-client-host-btn" type="button" class="ghost small-btn">Use local app</button>
             <button id="discover-btn" type="button" class="ghost">Discover on LAN</button>
             <ul id="discovered-hosts" class="host-urls"></ul>
           </div>
@@ -64,7 +67,10 @@
               required
             />
           </label>
-          <button type="submit">Login</button>
+          <div class="login-submit-row">
+            <span id="login-target-badge" class="login-target-badge local" title="Login target: local app">Local</span>
+            <button type="submit">Login</button>
+          </div>
         </form>
       </section>
 

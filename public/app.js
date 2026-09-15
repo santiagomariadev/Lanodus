@@ -5,6 +5,7 @@ const isElectron = Boolean(window.lanodusApi);
 const state = {
   token: localStorage.getItem("token") || "",
   username: localStorage.getItem("username") || "",
+  clientHostUrl: localStorage.getItem("clientHostUrl") || "",
   selectedFile: null,
   desktopMode: "host",
   filePage: 1,
@@ -20,11 +21,15 @@ let autoRefreshInFlight = false;
 const loginCard = document.getElementById("login-card");
 const dashboard = document.getElementById("dashboard");
 const loginForm = document.getElementById("login-form");
+const loginTargetBadge = document.getElementById("login-target-badge");
 const logoutBtn = document.getElementById("logout-btn");
 const currentUserEl = document.getElementById("current-user");
 const desktopDiscovery = document.getElementById("desktop-discovery");
 const hostUrlsList = document.getElementById("host-urls");
+const hostSelectedUrlEl = document.getElementById("host-selected-url");
 const discoveredHostsList = document.getElementById("discovered-hosts");
+const clientSelectedHostEl = document.getElementById("client-selected-host");
+const clearClientHostBtn = document.getElementById("clear-client-host-btn");
 const hostNetworkPanel = document.getElementById("host-network-panel");
 const clientNetworkPanel = document.getElementById("client-network-panel");
 const startHostBtn = document.getElementById("start-host-btn");
@@ -162,30 +167,175 @@ function setDesktopMode(mode) {
   }
 
   if (mode === "client") {
+    updateClientSelectedHostLabel();
     discoverLocalHosts();
   }
 }
 
-function setHostUrls(hostnames) {
+function toHttpUrl(value) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeHostBaseUrl(url) {
+  const safeUrl = toHttpUrl(url);
+  if (!safeUrl) {
+    return "";
+  }
+
+  const parsed = new URL(safeUrl);
+  if (parsed.origin === window.location.origin) {
+    return "";
+  }
+
+  return parsed.origin;
+}
+
+state.clientHostUrl = normalizeHostBaseUrl(state.clientHostUrl);
+localStorage.setItem("clientHostUrl", state.clientHostUrl);
+
+function getApiBaseUrl() {
+  return state.clientHostUrl || "";
+}
+
+function buildApiUrl(path) {
+  const base = getApiBaseUrl();
+  if (!base) {
+    return path;
+  }
+
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+function updateClientSelectedHostLabel() {
+  if (!clientSelectedHostEl) {
+    return;
+  }
+
+  clientSelectedHostEl.textContent = state.clientHostUrl
+    ? `Connected host: ${state.clientHostUrl}`
+    : "Connected host: local app";
+}
+
+function updateLoginTargetBadge() {
+  if (!loginTargetBadge) {
+    return;
+  }
+
+  const isRemote = Boolean(state.clientHostUrl);
+  loginTargetBadge.textContent = isRemote ? "Remote" : "Local";
+  loginTargetBadge.classList.toggle("remote", isRemote);
+  loginTargetBadge.classList.toggle("local", !isRemote);
+  loginTargetBadge.setAttribute(
+    "title",
+    isRemote ? `Login target: ${state.clientHostUrl}` : "Login target: local app",
+  );
+}
+
+function setClientHostTarget(url, shouldResetSession = true) {
+  state.clientHostUrl = normalizeHostBaseUrl(url);
+  localStorage.setItem("clientHostUrl", state.clientHostUrl);
+  updateClientSelectedHostLabel();
+  updateLoginTargetBadge();
+
+  if (shouldResetSession && state.token) {
+    logout();
+    showToast("Host changed. Login again to continue.", "ok");
+  }
+}
+
+function setSelectedHostUrlLabel(url) {
+  if (!hostSelectedUrlEl) {
+    return;
+  }
+
+  hostSelectedUrlEl.textContent = url ? `Shared URL: ${url}` : "Shared URL: none selected";
+}
+
+function pickDefaultHostUrl(urls) {
+  const ipv4Pattern = /^http:\/\/(\d{1,3}\.){3}\d{1,3}:\d+\/?$/;
+  const ipv4Url = urls.find((url) => ipv4Pattern.test(url));
+  return ipv4Url || urls[0] || "";
+}
+
+async function selectHostUrlToShare(url) {
+  if (!isElectron || !window.lanodusApi?.setPreferredHostUrl) {
+    return null;
+  }
+
+  return window.lanodusApi.setPreferredHostUrl(url);
+}
+
+function setHostUrls(hostnames, preferredUrl = "") {
   hostUrlsList.innerHTML = "";
 
   if (!hostnames?.length) {
     const item = document.createElement("li");
     item.textContent = "No hostnames available yet.";
     hostUrlsList.appendChild(item);
+    setSelectedHostUrlLabel("");
     return;
   }
 
+  const selectedUrl = preferredUrl || pickDefaultHostUrl(hostnames);
+  setSelectedHostUrlLabel(selectedUrl);
+
   for (const url of hostnames) {
     const item = document.createElement("li");
-    const link = document.createElement("button");
-    link.type = "button";
-    link.className = "link-btn";
-    link.textContent = url;
-    link.addEventListener("click", async () => {
+    if (url === selectedUrl) {
+      item.classList.add("selected");
+    }
+
+    const urlText = document.createElement("div");
+    urlText.textContent = url;
+
+    const actions = document.createElement("div");
+    actions.className = "host-url-actions";
+
+    const shareBtn = document.createElement("button");
+    shareBtn.type = "button";
+    shareBtn.className = "small-btn";
+    shareBtn.textContent = url === selectedUrl ? "Shared" : "Share this URL";
+    shareBtn.disabled = url === selectedUrl;
+    shareBtn.addEventListener("click", async () => {
+      try {
+        const result = await selectHostUrlToShare(url);
+        const nextUrls = result?.urls || hostnames;
+        const nextPreferred = result?.preferredUrl || url;
+        setHostUrls(nextUrls, nextPreferred);
+        showToast(`Shared URL updated`, "ok");
+      } catch (error) {
+        showToast(error.message || "Could not set shared URL", "err");
+      }
+    });
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "ghost small-btn";
+    openBtn.textContent = "Open";
+    openBtn.addEventListener("click", async () => {
       await window.lanodusApi.openExternalUrl(url);
     });
-    item.appendChild(link);
+
+    actions.appendChild(shareBtn);
+    actions.appendChild(openBtn);
+    item.appendChild(urlText);
+    item.appendChild(actions);
     hostUrlsList.appendChild(item);
   }
 }
@@ -201,20 +351,47 @@ function setDiscoveredHosts(hosts) {
   }
 
   for (const host of hosts) {
+    const targetUrl = host.url || `http://${host.host}:${host.port}`;
+    const normalizedTarget = normalizeHostBaseUrl(targetUrl);
+
     const item = document.createElement("li");
+    if (normalizedTarget && normalizedTarget === state.clientHostUrl) {
+      item.classList.add("selected");
+    }
+
     const label = document.createElement("div");
     label.textContent = host.name || host.host || "Lanodus";
-    const url = document.createElement("button");
-    url.type = "button";
-    url.className = "link-btn";
-    url.textContent = host.url || `http://${host.host}:${host.port}`;
-    url.addEventListener("click", async () => {
-      const target = host.url || `http://${host.host}:${host.port}`;
-      await window.lanodusApi.openExternalUrl(target);
+
+    const urlText = document.createElement("div");
+    urlText.textContent = targetUrl;
+
+    const actions = document.createElement("div");
+    actions.className = "host-url-actions";
+
+    const connectBtn = document.createElement("button");
+    connectBtn.type = "button";
+    connectBtn.className = "small-btn";
+    connectBtn.textContent = normalizedTarget === state.clientHostUrl ? "Connected" : "Connect";
+    connectBtn.disabled = normalizedTarget === state.clientHostUrl;
+    connectBtn.addEventListener("click", () => {
+      setClientHostTarget(targetUrl);
+      setDiscoveredHosts(hosts);
+      showToast("Host selected. Use the login form below.", "ok");
     });
 
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "ghost small-btn";
+    openBtn.textContent = "Open";
+    openBtn.addEventListener("click", async () => {
+      await window.lanodusApi.openExternalUrl(targetUrl);
+    });
+
+    actions.appendChild(connectBtn);
+    actions.appendChild(openBtn);
     item.appendChild(label);
-    item.appendChild(url);
+    item.appendChild(urlText);
+    item.appendChild(actions);
     discoveredHostsList.appendChild(item);
   }
 }
@@ -226,7 +403,7 @@ async function refreshNetworkInfo() {
 
   try {
     const info = await window.lanodusApi.getNetworkInfo();
-    setHostUrls(info.hostnames || []);
+    setHostUrls(info.hostnames || [], info.preferredUrl || "");
   } catch (error) {
     showToast(error.message || "Could not refresh host info", "err");
   }
@@ -239,8 +416,9 @@ async function startHostBroadcast() {
 
   try {
     const info = await window.lanodusApi.startHostBroadcast();
-    setHostUrls(info.urls || []);
-    showToast(`Hosting on ${info.hostname}`, "ok");
+    setHostUrls(info.urls || [], info.preferredUrl || "");
+    const sharedUrl = info.preferredUrl || pickDefaultHostUrl(info.urls || []);
+    showToast(`Hosting on ${sharedUrl || info.hostname}`, "ok");
   } catch (error) {
     showToast(error.message || "Could not start hosting", "err");
   }
@@ -326,7 +504,7 @@ function formatBytes(bytes) {
 }
 
 async function downloadFile(file) {
-  const res = await fetch(file.downloadUrl, {
+  const res = await fetch(buildApiUrl(file.downloadUrl), {
     headers: authHeaders(),
   });
 
@@ -495,7 +673,7 @@ function authHeaders(extra = {}) {
 }
 
 async function api(url, options = {}) {
-  const res = await fetch(url, options);
+  const res = await fetch(buildApiUrl(url), options);
   if (res.status === 401) {
     logout();
     throw new Error("Session expired. Please login again.");
@@ -518,7 +696,7 @@ function logout() {
 }
 
 async function login(username, password) {
-  const res = await fetch("/api/login", {
+  const res = await fetch(buildApiUrl("/api/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
@@ -720,6 +898,11 @@ discoverBtn.addEventListener("click", () => {
   discoverLocalHosts();
 });
 
+clearClientHostBtn?.addEventListener("click", () => {
+  setClientHostTarget(window.location.origin);
+  showToast("Using local app host", "ok");
+});
+
 logoutBtn.addEventListener("click", () => {
   logout();
 });
@@ -864,6 +1047,8 @@ textForm.addEventListener("submit", async (event) => {
 setAuthedView();
 setDesktopDiscoveryVisible();
 setActiveTab("files");
+updateClientSelectedHostLabel();
+updateLoginTargetBadge();
 
 if (isElectron) {
   setDesktopMode("host");

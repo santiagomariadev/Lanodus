@@ -147,6 +147,12 @@ body {
   letter-spacing: 0.08em;
 }
 
+.panel-hint {
+  margin: -0.2rem 0 0;
+  color: #d0e5f7;
+  font-size: 0.85rem;
+}
+
 .host-urls {
   list-style: none;
   padding: 0;
@@ -162,6 +168,17 @@ body {
   border-radius: 10px;
   border: 1px solid rgba(103, 149, 202, 0.34);
   background: rgba(13, 28, 43, 0.72);
+}
+
+.host-urls li.selected {
+  border-color: rgba(127, 220, 248, 0.9);
+  box-shadow: 0 0 0 1px rgba(127, 220, 248, 0.35) inset;
+}
+
+.host-url-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
 }
 
 .link-btn {
@@ -257,6 +274,37 @@ h3 {
   display: grid;
   gap: 0.9rem;
   margin-top: 1.2rem;
+}
+
+.login-submit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.login-target-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 0.32rem 0.52rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid rgba(127, 220, 248, 0.45);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.login-target-badge.local {
+  color: #d9fff0;
+  background: rgba(53, 211, 138, 0.2);
+}
+
+.login-target-badge.remote {
+  color: #dff1ff;
+  background: rgba(43, 106, 254, 0.24);
 }
 
 label {

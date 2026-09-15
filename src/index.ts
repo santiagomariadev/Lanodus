@@ -157,18 +157,21 @@ function securityHeaders(extra: Record<string, string> = {}) {
 			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com",
 			"font-src 'self' https://fonts.gstatic.com data:",
 			"img-src 'self' data:",
-			"connect-src 'self' http://localhost:*",
+			"connect-src 'self' http://localhost:* http://*:* https://*:*",
 			"object-src 'none'",
 			"base-uri 'none'",
 			"frame-ancestors 'none'",
 			"form-action 'self'",
 		].join("; "),
+		"Access-Control-Allow-Origin": "*",
+		"Access-Control-Allow-Headers": "Authorization, Content-Type",
+		"Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
 		"X-Content-Type-Options": "nosniff",
 		"X-Frame-Options": "DENY",
 		"Referrer-Policy": "no-referrer",
 		"Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
 		"Cross-Origin-Opener-Policy": "same-origin",
-		"Cross-Origin-Resource-Policy": "same-origin",
+		"Cross-Origin-Resource-Policy": "cross-origin",
 		...extra,
 	};
 }
@@ -355,6 +358,13 @@ async function startServer() {
 		async fetch(req) {
 			const url = new URL(req.url);
 			const { pathname } = url;
+
+			if (req.method === "OPTIONS" && pathname.startsWith("/api/")) {
+				return new Response(null, {
+					status: 204,
+					headers: securityHeaders(),
+				});
+			}
 
 			if (req.method === "POST" && pathname === "/api/login") {
 				let body: { username?: string; password?: string };
