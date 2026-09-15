@@ -13,6 +13,10 @@ const state = {
   textSearch: "",
 };
 
+const AUTO_REFRESH_MS = 2500;
+let autoRefreshTimer = null;
+let autoRefreshInFlight = false;
+
 const loginCard = document.getElementById("login-card");
 const dashboard = document.getElementById("dashboard");
 const loginForm = document.getElementById("login-form");
@@ -74,6 +78,57 @@ function setAuthedView() {
   loginCard.classList.toggle("hidden", authed);
   dashboard.classList.toggle("hidden", !authed);
   currentUserEl.textContent = state.username;
+
+  if (authed) {
+    startAutoRefresh();
+    return;
+  }
+
+  stopAutoRefresh();
+}
+
+function activeTabName() {
+  const activeTab = tabs.find((tab) => tab.classList.contains("active"));
+  return activeTab?.dataset.tab || "files";
+}
+
+async function refreshActiveTabSilently() {
+  if (!state.token || document.hidden || autoRefreshInFlight) {
+    return;
+  }
+
+  autoRefreshInFlight = true;
+  try {
+    if (activeTabName() === "text") {
+      await loadTexts(state.textPage, state.textSearch);
+      return;
+    }
+
+    await loadFiles(state.filePage, state.fileSearch);
+  } catch {
+    // Ignore background refresh errors to avoid disrupting in-flight actions.
+  } finally {
+    autoRefreshInFlight = false;
+  }
+}
+
+function startAutoRefresh() {
+  if (autoRefreshTimer !== null) {
+    return;
+  }
+
+  autoRefreshTimer = window.setInterval(() => {
+    refreshActiveTabSilently();
+  }, AUTO_REFRESH_MS);
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer === null) {
+    return;
+  }
+
+  clearInterval(autoRefreshTimer);
+  autoRefreshTimer = null;
 }
 
 function setDesktopDiscoveryVisible() {
@@ -364,15 +419,15 @@ async function loadFiles(page = state.filePage, search = state.fileSearch) {
     sizeCell.textContent = formatBytes(file.size || 0);
     uploadedCell.textContent = new Date(file.uploadedAt).toLocaleString();
 
-    const openBtn = document.createElement("button");
-    openBtn.type = "button";
-    openBtn.className = "small-btn";
-    openBtn.textContent = "Open";
-    openBtn.addEventListener("click", async () => {
+    const downloadBtn = document.createElement("button");
+    downloadBtn.type = "button";
+    downloadBtn.className = "small-btn";
+    downloadBtn.textContent = "Download";
+    downloadBtn.addEventListener("click", async () => {
       try {
         await downloadFile(file);
       } catch (error) {
-        showToast(error.message || "Could not open file", "err");
+        showToast(error.message || "Could not download file", "err");
       }
     });
 
@@ -388,7 +443,7 @@ async function loadFiles(page = state.filePage, search = state.fileSearch) {
       }
     });
 
-    actionCell.appendChild(openBtn);
+    actionCell.appendChild(downloadBtn);
     actionCell.appendChild(deleteBtn);
     row.appendChild(nameCell);
     row.appendChild(sizeCell);
@@ -667,6 +722,12 @@ discoverBtn.addEventListener("click", () => {
 
 logoutBtn.addEventListener("click", () => {
   logout();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    refreshActiveTabSilently();
+  }
 });
 
 tabs.forEach((tabBtn) => {
