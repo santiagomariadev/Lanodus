@@ -31,4 +31,5 @@ bun run dev
 
 - The app still serves the same upload UI on `http://localhost:3000` when running in browser mode.
 - In desktop mode, the Electron app loads the same UI via the app's bundled local server.
+- Linux AppImage releases bundle a Bun binary, so end users do not need a system Bun install.
 - Bonjour discovery works on supported LAN environments such as macOS, Linux, and local network segments with mDNS enabled.

@@ -46,9 +46,12 @@ network automatically over mDNS — no typing IP addresses.
 
 ## Requirements
 
-- Bun 1.3+
+- Bun 1.3+ (for development, browser mode, and building releases)
 - For desktop mode: Electron and `electron-builder` (already listed in
   `devDependencies`, installed via `bun install`)
+
+Published Linux AppImages bundle a Bun runtime internally, so end users
+do not need to install Bun separately to run the desktop executable.
 
 ## Install
 
@@ -102,6 +105,9 @@ bun run release:appimage
 ```
 
 Output lands in `release/`.
+
+The release script copies your local Bun binary into `bundled/bin/bun`
+before packaging, and `electron-builder` includes it in the AppImage.
 
 ## API summary
 

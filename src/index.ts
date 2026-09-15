@@ -351,6 +351,7 @@ async function startServer() {
 
 	const server = Bun.serve({
 		port: Number(process.env.PORT || 3000),
+		maxRequestBodySize: 1024 * 1024 * 1024, // 1 GB
 		async fetch(req) {
 			const url = new URL(req.url);
 			const { pathname } = url;

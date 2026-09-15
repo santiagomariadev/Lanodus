@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from "electron";
 import * as path from "node:path";
 import * as os from "node:os";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import bonjour from "bonjour";
 import {
   addAllowedUser as addAllowedUserToStore,
@@ -16,6 +17,7 @@ const APP_ROOT = app.isPackaged ? app.getAppPath() : path.resolve(__dirname, "..
 const DATA_ROOT = path.join(app.getPath("userData"), "lanodus");
 const CHILD_CWD = app.isPackaged ? path.dirname(process.resourcesPath || app.getPath("home")) : APP_ROOT;
 const PUBLIC_DIR = app.isPackaged ? path.join(process.resourcesPath, "public") : path.join(APP_ROOT, "public");
+const PACKAGED_BUN = path.join(process.resourcesPath, "bin", process.platform === "win32" ? "bun.exe" : "bun");
 const SERVER_ENTRY = app.isPackaged
   ? path.join(process.resourcesPath, "dist", "index.js")
   : path.join(APP_ROOT, "src", "index.ts");
@@ -98,6 +100,19 @@ function waitForServer(): Promise<void> {
   });
 }
 
+function resolveServerCommand(): string {
+  if (!app.isPackaged) {
+    return "bun";
+  }
+
+  if (existsSync(PACKAGED_BUN)) {
+    return PACKAGED_BUN;
+  }
+
+  // Fallback keeps older packages functional if Bun happens to be installed globally.
+  return "bun";
+}
+
 function startLanodusServer(): Promise<void> {
   if (serverProcess) {
     return Promise.resolve();
@@ -117,7 +132,7 @@ function startLanodusServer(): Promise<void> {
       LANODUS_DATA_DIR: DATA_ROOT,
     };
 
-    const serverCommand = app.isPackaged ? "bun" : "bun";
+    const serverCommand = resolveServerCommand();
     const serverArgs = [SERVER_ENTRY];
 
     serverProcess = spawn(serverCommand, serverArgs, {
@@ -142,6 +157,12 @@ function startLanodusServer(): Promise<void> {
 
     const onError = (error: Error) => {
       if (!settled) {
+        const spawnError = error as NodeJS.ErrnoException;
+        if (app.isPackaged && spawnError.code === "ENOENT") {
+          settled = true;
+          reject(new Error("Lanodus could not start because the bundled Bun runtime is missing."));
+          return;
+        }
         settled = true;
         reject(error);
       }

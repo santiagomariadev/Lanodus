@@ -16,7 +16,8 @@
     "add-user": "bun scripts/add-allowed-user.ts",
     "check": "bunx tsc --noEmit",
     "test": "bun run build && node --test tests/*.test.js",
-    "release:appimage": "bun run build && bunx electron-builder build --linux AppImage"
+    "prepare:bundled-bun": "node scripts/prepare-bundled-bun.js",
+    "release:appimage": "bun run build && bun run prepare:bundled-bun && bunx electron-builder build --linux AppImage"
   },
   "dependencies": {
     "bonjour": "^3.0.0"
@@ -49,6 +50,10 @@
       {
         "from": "public",
         "to": "public"
+      },
+      {
+        "from": "bundled/bin/bun",
+        "to": "bin/bun"
       }
     ],
     "linux": {
