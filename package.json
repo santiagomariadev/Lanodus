@@ -17,7 +17,11 @@
     "check": "bunx tsc --noEmit",
     "test": "bun run build && node --test tests/*.test.js",
     "prepare:bundled-bun": "node scripts/prepare-bundled-bun.js",
-    "release:appimage": "bun run build && bun run prepare:bundled-bun && bunx electron-builder build --linux AppImage"
+    "release:appimage": "bun run build && TARGET_PLATFORM=linux bun run prepare:bundled-bun && bunx electron-builder build --linux AppImage",
+    "release:mac:x64": "bun run build && TARGET_PLATFORM=darwin TARGET_ARCH=x64 bun run prepare:bundled-bun && bunx electron-builder build --mac --x64",
+    "release:mac:arm64": "bun run build && TARGET_PLATFORM=darwin TARGET_ARCH=arm64 bun run prepare:bundled-bun && bunx electron-builder build --mac --arm64",
+    "release:win:x64": "bun run build && TARGET_PLATFORM=win32 TARGET_ARCH=x64 bun run prepare:bundled-bun && bunx electron-builder build --win --x64",
+    "release:win:arm64": "bun run build && TARGET_PLATFORM=win32 TARGET_ARCH=arm64 bun run prepare:bundled-bun && bunx electron-builder build --win --arm64"
   },
   "dependencies": {
     "bonjour": "^3.0.0"
@@ -52,8 +56,8 @@
         "to": "public"
       },
       {
-        "from": "bundled/bin/bun",
-        "to": "bin/bun"
+        "from": "bundled/bin",
+        "to": "bin"
       }
     ],
     "linux": {
