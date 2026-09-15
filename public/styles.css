@@ -3,7 +3,7 @@
   --bg-soft: #10283b;
   --card: rgba(7, 18, 28, 0.88);
   --card-border: rgba(129, 176, 216, 0.24);
-  --accent: #ff7a31;
+  --accent: #2b6afe;
   --accent-2: #7fdcf8;
   --accent-3: #40c7b7;
   --text: #eef5fb;
@@ -23,7 +23,7 @@ body {
   font-family: "Space Grotesk", sans-serif;
   color: var(--text);
   background: radial-gradient(circle at 12% 15%, rgba(64, 199, 183, 0.18) 0%, transparent 38%),
-    radial-gradient(circle at 84% 18%, rgba(255, 122, 49, 0.16) 0%, transparent 32%),
+    radial-gradient(circle at 84% 18%, rgba(49, 76, 255, 0.16) 0%, transparent 32%),
     radial-gradient(circle at 50% 108%, rgba(127, 220, 248, 0.1) 0%, transparent 35%),
     linear-gradient(140deg, var(--bg-deep), #09141f 54%, var(--bg-soft));
   overflow-x: hidden;
@@ -40,7 +40,7 @@ body {
 .orb-1 {
   width: 240px;
   height: 240px;
-  background: #ff9459;
+  background: #0750fc;
   top: -60px;
   right: -70px;
 }
@@ -278,6 +278,39 @@ input {
   padding: 0.72rem 0.82rem;
 }
 
+input[type="file"] {
+  padding: 0.5rem;
+  background: rgba(9, 22, 35, 0.52);
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 0.9rem;
+  border: 0;
+  border-radius: 9px;
+  padding: 0.62rem 0.95rem;
+  color: #061118;
+  background: var(--accent-2);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+input[type="file"]::file-selector-button:hover {
+  filter: brightness(1.06);
+}
+
+input[type="file"]::-webkit-file-upload-button {
+  margin-right: 0.9rem;
+  border: 0;
+  border-radius: 9px;
+  padding: 0.62rem 0.95rem;
+  color: #061118;
+  background: var(--accent-2);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
 input:focus {
   outline: 2px solid #7fdcf8;
   outline-offset: 1px;
@@ -427,6 +460,7 @@ td:nth-child(2) {
   padding: 0.45rem 0.72rem;
   border-radius: 8px;
   font-size: 0.82rem;
+  background: var(--accent-2);
 }
 
 .small-btn.danger {
